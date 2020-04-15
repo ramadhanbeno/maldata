@@ -1,18 +1,24 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import train_test_split
 
 mal_df = pd.read_csv('maldata.csv')
-
 pd.set_option("display.max_columns", None)
 print(mal_df.columns)
-print('shape data sebelum di cleaning adalah', mal_df.shape)
+print(mal_df.dtypes)
+mal_df.drop(['Name', 'md5'], axis=1)
+print('nilai missing value', mal_df.isna().values.any())
+print('nilai duplikat', mal_df.duplicated().value_counts())
 
-# cleaning data
+print('shape data sebelum di cleaning', mal_df.shape)
 mal_df = mal_df.dropna()
-print('shape data setelah di cleaning adalah', mal_df.shape)
+print('shape data setelah di cleaning', mal_df.shape)
+print(mal_df.corr())
+#print(sns.heatmap(data=mal_df.corr()))
+#plt.show()
 
 # prediksi
 y = mal_df['legitimate']
