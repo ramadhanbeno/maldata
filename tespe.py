@@ -3,7 +3,7 @@ import pefile
 import pandas as pd
 import hashlib
 import math
-import scipy as sc
+import array as arr
 
 def md5sum(filename, blocksize=65536):
     hash = hashlib.md5()
@@ -49,10 +49,10 @@ class PEFile:
         self.e_cs = self.pe.DOS_HEADER.e_cs
         self.e_lfarlc = self.pe.DOS_HEADER.e_lfarlc
         self.e_ovno = self.pe.DOS_HEADER.e_ovno
-        self.e_res = self.pe.DOS_HEADER.e_res
+        # self.e_res = self.pe.DOS_HEADER.e_res
         self.e_oemid = self.pe.DOS_HEADER.e_oemid
         self.e_oeminfo = self.pe.DOS_HEADER.e_oeminfo
-        self.e_res2 = self.pe.DOS_HEADER.e_res2
+        # self.e_res2 = self.pe.DOS_HEADER.e_res2
         self.e_lfanew = self.pe.DOS_HEADER.e_lfanew
 
         # FILE_HEADER
@@ -99,45 +99,74 @@ class PEFile:
         # SECTION
         self.SectionLength = len(self.pe.sections)
         entropy = list(map(lambda x:x.get_entropy(), self.pe.sections))
-        self.SectionMeanEntropy = entropy
+        self.SectionMeanEntropy = sum(entropy)/float(len(entropy))
+        self.SectionMinEntropy = min(entropy)
+        self.SectionMaxEntropy = max(entropy)
+        raw_size = list(map(lambda x: x.SizeOfRawData, self.pe.sections))
+        self.SectionMeanRawSize = sum(raw_size) / float(len(raw_size))
+        self.SectionMinRawSize = min(raw_size)
+        self.SectionMaxRawSize = max(raw_size)
+        virtual_size = list(map(lambda x: x.Misc_VirtualSize, self.pe.sections))
+        self.SectionMeanVirtualSize = sum(virtual_size) / float(len(virtual_size))
+        self.SectionMinVirtualSize = min(virtual_size)
+        self.SectionMaxVirtualSize = max(virtual_size)
+        physical_size = list(map(lambda x: x.Misc_PhysicalAddress, self.pe.sections))
+        self.SectionMeanPhysicalSize = sum(virtual_size) / float(len(virtual_size))
+        self.SectionMinPhysicalSize = min(physical_size)
+        self.SectionMaxPhysicalSize = max(physical_size)
+        virtual_address = list(map(lambda x: x.VirtualAddress, self.pe.sections))
+        self.SectionMeanVirtualAddress = sum(virtual_address) / float(len(virtual_address))
+        self.SectionMinVirtualAddress = min(virtual_address)
+        self.SectionMaxVirtualAddress = max(virtual_address)
+        pointer_data = list(map(lambda x: x.PointerToRawData, self.pe.sections))
+        self.SectionMeanPointerToRawData = sum(pointer_data) / float(len(pointer_data))
+        self.SectionMinPointerToRawData = min(pointer_data)
+        self.SectionMaxPointerToRawData = max(pointer_data)
+        pointer_data = list(map(lambda x: x.PointerToRawData, self.pe.sections))
+        self.SectionMeanPointerToRawData = sum(pointer_data) / float(len(pointer_data))
+        self.SectionMinPointerToRawData = min(pointer_data)
+        self.SectionMaxPointerToRawData = max(pointer_data)
+        char = list(map(lambda x: x.Characteristics, self.pe.sections))
+        self.SectionMeanCharacteristics = sum(char) / float(len(char))
+        self.SectionMinCharacteristics = min(char)
+        self.SectionMaxCharacteristics = max(char)
 
+        # RVA
+        # for data_directory in self.pe.OPTIONAL_HEADER.DATA_DIRECTORY:
+        #     print('\t' + data_directory.name)
+        self.SizeImageDirEntryExport = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[0].Size
+        self.RVAImageDirEntryExport = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[0].VirtualAddress
+        self.SizeImageDirEntryImport = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[1].Size
+        self.RVAImageDirEntryImport = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[1].VirtualAddress
+        self.SizeImageDirEntryResource = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[2].Size
+        self.RVAImageDirEntryResource = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[2].VirtualAddress
+        self.SizeImageDirEntryException = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[3].Size
+        self.RVAImageDirEntryException = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[3].VirtualAddress
+        self.SizeImageDirEntrySECURITY = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[4].Size
+        self.RVAImageDirEntrySECURITY = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[4].VirtualAddress
 
+        # Directory
+        self.pe.parse_data_directories()
+        count_f = 0
+        count_m = 0
+        for entry in self.pe.DIRECTORY_ENTRY_IMPORT:
+            # print (entry.dll)
+            count_f += 1
+            for xx in entry.imports:
+                # print ('\t', hex(xx.address), imp.name)
+                count_m += 1
+        self.SumImportFunction = count_f
+        self.SumImportFunctionMethod = count_m
 
-
-
-
-        # self.DebugRVA = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[6].VirtualAddress
-        # self.ImageVersion = self.pe.OPTIONAL_HEADER.MajorImageVersion
-        # self.OSVersion = self.pe.OPTIONAL_HEADER.MajorOperatingSystemVersion
-        # self.ExportRVA = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[0].VirtualAddress
-        # self.ExportSize = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[0].Size
-        # self.IATRVA = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[12].VirtualAddress
-        # self.ResSize = self.pe.OPTIONAL_HEADER.DATA_DIRECTORY[2].Size
-        # self.LinkerVersion = self.pe.OPTIONAL_HEADER.MajorLinkerVersion
-        # self.VirtualSize2 = self.pe.sections[1].Misc_VirtualSize
-        # self.NumberOfSections = self.pe.FILE_HEADER.NumberOfSections
-        # self.StackReserveSize = self.pe.OPTIONAL_HEADER.SizeOfStackReserve
-        # self.Dll = self.pe.OPTIONAL_HEADER.DllCharacteristics
-        # self.pe.parse_data_directories()
-        # countf = 0
-        # countm = 0
-        # for entry in self.pe.DIRECTORY_ENTRY_IMPORT:
-        #     # print (entry.dll)
-        #     countf += 1
-        #     for imp in entry.imports:
-        #         # print ('\t', hex(imp.address), imp.name)
-        #         countm += 1
-        # self.ImportFunctionCount = countf
-        # self.ImportFunctionMethodCount = countm
         file_content.close()
-        print("Loaded PE File")
+        print("Load File")
 
     def Construct(self):
         sample = {}
         for feature, value in self.__dict__.items():
             if (feature != "pe"):
                 sample[feature] = value
-        print("Construct completed")
+        print("Extract Feature completed")
         return sample
 
 def pe2vec():
@@ -161,8 +190,9 @@ def pe2vec():
 
 def saveToCSV(dataset):
     df = pd.DataFrame(dataset)
-    infected = df.transpose()
-    infected.to_csv('dataset_m641.csv', encoding='utf-8', index=False)
+    mal = df.transpose()
+    print(mal.shape)
+    mal.to_csv('dataset_m4lw4r3.csv', encoding='utf-8', index=False)
 
 
 pedata = pe2vec()
