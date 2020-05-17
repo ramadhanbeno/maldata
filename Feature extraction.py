@@ -4,8 +4,6 @@ import hashlib
 import array as arr
 import math
 
-# fpath = "/home/x/ta/dataset/"
-# get md5
 def get_md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, "rb") as f:
@@ -28,56 +26,40 @@ def get_entropy(data):
 
     return entropy
 
-# resource PE
-def get_resources(pe):
-    """Extract resources :
-    [entropy, size]"""
-    resources = []
-    if hasattr(pe, 'DIRECTORY_ENTRY_RESOURCE'):
-        try:
-            for resource_type in pe.DIRECTORY_ENTRY_RESOURCE.entries:
-                if hasattr(resource_type, 'directory'):
-                    for resource_id in resource_type.directory.entries:
-                        if hasattr(resource_id, 'directory'):
-                            for resource_lang in resource_id.directory.entries:
-                                    data = pe.get_data(resource_lang.data.struct.OffsetToData, resource_lang.data.struct.Size)
-                                    size = resource_lang.data.struct.Size
-                                    entropy = get_entropy(data)
-
-                                    resources.append([entropy, size])
-        except Exception as e:
-            return resources
-        return resources
-
-def get_version_info(pe):
-    """Return version infos"""
-    res = {}
-    for fileinfo in pe.FileInfo:
-        if fileinfo.Key == 'StringFileInfo':
-            for st in fileinfo.StringTable:
-                for entry in st.entries.items():
-                    res[entry[0]] = entry[1]
-        if fileinfo.Key == 'VarFileInfo':
-            for var in fileinfo.Var:
-                res[var.entry.items()[0][0]] = var.entry.items()[0][1]
-    if hasattr(pe, 'VS_FIXEDFILEINFO'):
-          res['flags'] = pe.VS_FIXEDFILEINFO.FileFlags
-          res['os'] = pe.VS_FIXEDFILEINFO.FileOS
-          res['type'] = pe.VS_FIXEDFILEINFO.FileType
-          res['file_version'] = pe.VS_FIXEDFILEINFO.FileVersionLS
-          res['product_version'] = pe.VS_FIXEDFILEINFO.ProductVersionLS
-          res['signature'] = pe.VS_FIXEDFILEINFO.Signature
-          res['struct_version'] = pe.VS_FIXEDFILEINFO.StrucVersion
-    return res
 
 def extract_infos(fpath):
     res = []
     res.append(os.path.basename(fpath))
     res.append(get_md5(fpath))
     pe = pefile.PE(fpath)
+    # Image DOS Header
+    res.append(pe.DOS_HEADER.e_magic)
+    res.append(pe.DOS_HEADER.e_cblp)
+    res.append(pe.DOS_HEADER.e_cp)
+    res.append(pe.DOS_HEADER.e_crlc)
+    res.append(pe.DOS_HEADER.e_cparhdr)
+    res.append(pe.DOS_HEADER.e_minalloc)
+    res.append(pe.DOS_HEADER.e_maxalloc)
+    res.append(pe.DOS_HEADER.e_ss)
+    res.append(pe.DOS_HEADER.e_sp)
+    res.append(pe.DOS_HEADER.e_csum)
+    res.append(pe.DOS_HEADER.e_ip)
+    res.append(pe.DOS_HEADER.e_cs)
+    res.append(pe.DOS_HEADER.e_lfarlc)
+    res.append(pe.DOS_HEADER.e_ovno)
+    res.append(pe.DOS_HEADER.e_oemid)
+    res.append(pe.DOS_HEADER.e_oeminfo)
+    res.append(pe.DOS_HEADER.e_lfanew)
+    # FILE HEADER
     res.append(pe.FILE_HEADER.Machine)
+    res.append(pe.FILE_HEADER.NumberOfSections)
+    res.append(pe.FILE_HEADER.TimeDateStamp)
+    res.append(pe.FILE_HEADER.PointerToSymbolTable)
+    res.append(pe.FILE_HEADER.NumberOfSymbols)
     res.append(pe.FILE_HEADER.SizeOfOptionalHeader)
     res.append(pe.FILE_HEADER.Characteristics)
+    # OPTIONAL_HEADER
+    res.append(pe.OPTIONAL_HEADER.Magic)
     res.append(pe.OPTIONAL_HEADER.MajorLinkerVersion)
     res.append(pe.OPTIONAL_HEADER.MinorLinkerVersion)
     res.append(pe.OPTIONAL_HEADER.SizeOfCode)
@@ -98,6 +80,7 @@ def extract_infos(fpath):
     res.append(pe.OPTIONAL_HEADER.MinorImageVersion)
     res.append(pe.OPTIONAL_HEADER.MajorSubsystemVersion)
     res.append(pe.OPTIONAL_HEADER.MinorSubsystemVersion)
+    res.append(pe.OPTIONAL_HEADER.Reserved1)
     res.append(pe.OPTIONAL_HEADER.SizeOfImage)
     res.append(pe.OPTIONAL_HEADER.SizeOfHeaders)
     res.append(pe.OPTIONAL_HEADER.CheckSum)
@@ -109,48 +92,55 @@ def extract_infos(fpath):
     res.append(pe.OPTIONAL_HEADER.SizeOfHeapCommit)
     res.append(pe.OPTIONAL_HEADER.LoaderFlags)
     res.append(pe.OPTIONAL_HEADER.NumberOfRvaAndSizes)
-    res.append(len(pe.sections))
-    entropy = map(lambda x:x.get_entropy(), pe.sections)
-    res.append(sum(entropy)/float(len(entropy)))
-    res.append(min(entropy))
-    res.append(max(entropy))
-    raw_sizes = map(lambda x:x.SizeOfRawData, pe.sections)
-    res.append(sum(raw_sizes)/float(len(raw_sizes)))
-    res.append(min(raw_sizes))
-    res.append(max(raw_sizes))
-    virtual_sizes = map(lambda x:x.Misc_VirtualSize, pe.sections)
-    res.append(sum(virtual_sizes)/float(len(virtual_sizes)))
-    res.append(min(virtual_sizes))
-    res.append(max(virtual_sizes))
-    #Imports
-    try:
-        res.append(len(pe.DIRECTORY_ENTRY_IMPORT))
-        imports = sum([x.imports for x in pe.DIRECTORY_ENTRY_IMPORT], [])
-        res.append(len(imports))
-        res.append(len(filter(lambda x:x.name is None, imports)))
-    except AttributeError:
-        res.append(0)
-        res.append(0)
-        res.append(0)
-    #Exports
-    try:
-        res.append(len(pe.DIRECTORY_ENTRY_EXPORT.symbols))
-    except AttributeError:
-        # No export
-        res.append(0)
-    #Resources
-    resources= get_resources(pe)
-    res.append(len(resources))
-    if len(resources)> 0:
-        entropy = map(lambda x:x[0], resources)
+
+    # Section
+    if (len(pe.sections) !=0) :
+        res.append(len(pe.sections))
+        entropy = list(map(lambda x:x.get_entropy(), pe.sections))
         res.append(sum(entropy)/float(len(entropy)))
         res.append(min(entropy))
         res.append(max(entropy))
-        sizes = map(lambda x:x[1], resources)
-        res.append(sum(sizes)/float(len(sizes)))
-        res.append(min(sizes))
-        res.append(max(sizes))
-    else:
+        raw_sizes = list(map(lambda x:x.SizeOfRawData, pe.sections))
+        res.append(sum(raw_sizes)/float(len(raw_sizes)))
+        res.append(min(raw_sizes))
+        res.append(max(raw_sizes))
+        virtual_sizes = list(map(lambda x:x.Misc_VirtualSize, pe.sections))
+        res.append(sum(virtual_sizes)/float(len(virtual_sizes)))
+        res.append(min(virtual_sizes))
+        res.append(max(virtual_sizes))
+        physical_size = list(map(lambda x:x.Misc_PhysicalAddress, pe.sections))
+        res.append(sum(physical_size)/float(len(physical_size)))
+        res.append(min(physical_size))
+        res.append(max(physical_size))
+        virtual_address = list(map(lambda x:x.VirtualAddress, pe.sections))
+        res.append(sum(virtual_address)/float(len(virtual_address)))
+        res.append(min(virtual_address))
+        res.append(max(virtual_address))
+        pointer_data = list(map(lambda x:x.PointerToRawData, pe.sections))
+        res.append(sum(pointer_data)/float(len(pointer_data)))
+        res.append(min(pointer_data))
+        res.append(max(pointer_data))
+        char = list(map(lambda x:x.Characteristics, pe.sections))
+        res.append(sum(char)/float(len(char)))
+        res.append(min(char))
+        res.append(max(char))
+    else :
+        res.append(0)
+        res.append(0)
+        res.append(0)
+        res.append(0)
+        res.append(0)
+        res.append(0)
+        res.append(0)
+        res.append(0)
+        res.append(0)
+        res.append(0)
+        res.append(0)
+        res.append(0)
+        res.append(0)
+        res.append(0)
+        res.append(0)
+        res.append(0)
         res.append(0)
         res.append(0)
         res.append(0)
@@ -158,29 +148,67 @@ def extract_infos(fpath):
         res.append(0)
         res.append(0)
 
-    # Load configuration size
+    res.append(pe.OPTIONAL_HEADER.DATA_DIRECTORY[0].Size)
+    res.append(pe.OPTIONAL_HEADER.DATA_DIRECTORY[0].VirtualAddress)
+    res.append(pe.OPTIONAL_HEADER.DATA_DIRECTORY[1].Size)
+    res.append(pe.OPTIONAL_HEADER.DATA_DIRECTORY[1].VirtualAddress)
+    res.append(pe.OPTIONAL_HEADER.DATA_DIRECTORY[2].Size)
+    res.append(pe.OPTIONAL_HEADER.DATA_DIRECTORY[2].VirtualAddress)
+    res.append(pe.OPTIONAL_HEADER.DATA_DIRECTORY[3].Size)
+    res.append(pe.OPTIONAL_HEADER.DATA_DIRECTORY[3].VirtualAddress)
+    res.append(pe.OPTIONAL_HEADER.DATA_DIRECTORY[4].Size)
+    res.append(pe.OPTIONAL_HEADER.DATA_DIRECTORY[4].VirtualAddress)
+
+    # Directoey Import
     try:
-        res.append(pe.DIRECTORY_ENTRY_LOAD_CONFIG.struct.Size)
+        pe.parse_data_directories()
+        count_f = 0
+        count_m = 0
+        for entry in pe.DIRECTORY_ENTRY_IMPORT:
+            # print (entry.dll)
+            count_f += 1
+            for xx in entry.imports:
+                # print ('\t', hex(xx.address), xx.name)
+                count_m += 1
+        res.append(count_f)
+        res.append(count_m)
     except AttributeError:
+        res.append(0)
         res.append(0)
 
-    # Version configuration size
-    try:
-        version_infos = get_version_info(pe)
-        res.append(len(version_infos.keys()))
-    except AttributeError:
-        res.append(0)
     return res
 
 if __name__ == '__main__':
-    output = "data.csv"
+    output = "Output_CSV/dataset_m4lw4r3.csv"
     csv_delimiter = "|"
     columns = [
         "Name",
-        "md5",
+        "Md5",
+        "e_magic",
+        "e_cblp",
+        "e_cp",
+        "e_crlc",
+        "e_cparhdr",
+        "e_minalloc",
+        "e_maxalloc",
+        "e_ss",
+        "e_sp",
+        "e_csum",
+        "e_ip",
+        "e_cs",
+        "e_lfarlc",
+        "e_ovno",
+        "e_oemid",
+        "e_oeminfo",
+        "e_lfanew",
         "Machine",
+        "NumberOfSections",
+        "TimeDateStamp",
+        "PointerToSymbolTable",
+        "NumberOfSymbols",
         "SizeOfOptionalHeader",
         "Characteristics",
+        "Magic",
         "MajorLinkerVersion",
         "MinorLinkerVersion",
         "SizeOfCode",
@@ -198,6 +226,7 @@ if __name__ == '__main__':
         "MinorImageVersion",
         "MajorSubsystemVersion",
         "MinorSubsystemVersion",
+        "Reserved1",
         "SizeOfImage",
         "SizeOfHeaders",
         "CheckSum",
@@ -209,30 +238,43 @@ if __name__ == '__main__':
         "SizeOfHeapCommit",
         "LoaderFlags",
         "NumberOfRvaAndSizes",
-        "SectionsNb",
-        "SectionsMeanEntropy",
-        "SectionsMinEntropy",
-        "SectionsMaxEntropy",
-        "SectionsMeanRawsize",
-        "SectionsMinRawsize",
+        "SectionsLength",
+        "SectionMeanEntropy",
+        "SectionMinEntropy",
+        "SectionMaxEntropy",
+        "SectionMeanRawsize",
+        "SectionMinRawsize",
         "SectionMaxRawsize",
-        "SectionsMeanVirtualsize",
-        "SectionsMinVirtualsize",
+        "SectionMeanVirtualsize",
+        "SectionMinVirtualsize",
         "SectionMaxVirtualsize",
-        "ImportsNbDLL",
-        "ImportsNb",
-        "ImportsNbOrdinal",
-        "ExportNb",
-        "ResourcesNb",
-        "ResourcesMeanEntropy",
-        "ResourcesMinEntropy",
-        "ResourcesMaxEntropy",
-        "ResourcesMeanSize",
-        "ResourcesMinSize",
-        "ResourcesMaxSize",
-        "LoadConfigurationSize",
-        "VersionInformationSize",
-        "legitimate"
+        "SectionMeanPhysical",
+        "SectionMinPhysical",
+        "SectionMaxPhysical",
+        "SectionMeanVirtualAddress",
+        "SectionMinVirtualAddress",
+        "SectionMaxVirtualAddress",
+        "SectionMeanPointerData",
+        "SectionMinPointerData",
+        "SectionMaxPointerData",
+        "SectionMeanChar",
+        "SectionMinChar",
+        "SectionMaxChar",
+        "SizeImageDirectoryEntryExport",
+        "RVAImageDirectoryEntryExport",
+        "SizeImageDirectoryEntryImport",
+        "RVAImageDirectoryEntryImport",
+        "SizeImageDirectoryEntryResource",
+        "RVAImageDirectoryEntryResource",
+        "SizeImageDirectoryEntryException",
+        "RVAImageDirectoryEntryException",
+        "SizeImageDirectoryEntrySecurity",
+        "RVAImageDirectoryEntrySecurity",
+        "SumImportFunction",
+        "SumImportFunctionMethod",
+        "Label"
+
+
     ]
 
     ff = open(output, "a")
@@ -257,6 +299,6 @@ if __name__ == '__main__':
             ff.write(csv_delimiter.join(map(lambda x: str(x), res)) + "\n")
         except pefile.PEFormatError:
             print('\t -> Bad PE format')
-        except:
-            print('\t -> Weird error')
+        # except:
+        #     print('\t -> Weird error')
     ff.close()

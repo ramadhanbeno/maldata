@@ -4,6 +4,7 @@ import pandas as pd
 import hashlib
 import math
 import array as arr
+import numpy as np
 
 def md5sum(filename, blocksize=65536):
     hash = hashlib.md5()
@@ -27,13 +28,23 @@ def get_entropy(data):
 
     return entropy
 
+
+
 class PEFile:
     # representation of PE file
+    @staticmethod
+    def get_label():
+        label = []
+
+        return label
+
     def __init__(self, filename):
+
         with open(filename, "rb") as file_content:
             self.pe = pefile.PE(data=file_content.read(), fast_load=True)
 
         # IMAGE_DOS_HEADER
+        self.label = (PEFile.get_label())
         self.md5hash = md5sum(filename)
         self.e_magic = self.pe.DOS_HEADER.e_magic
         self.e_cblp = self.pe.DOS_HEADER.e_cblp
@@ -153,7 +164,7 @@ class PEFile:
             # print (entry.dll)
             count_f += 1
             for xx in entry.imports:
-                # print ('\t', hex(xx.address), imp.name)
+                # print ('\t', hex(xx.address), xx.name)
                 count_m += 1
         self.SumImportFunction = count_f
         self.SumImportFunctionMethod = count_m
@@ -166,32 +177,66 @@ class PEFile:
         for feature, value in self.__dict__.items():
             if (feature != "pe"):
                 sample[feature] = value
+
+        print(sample)
         print("Extract Feature completed")
         return sample
 
 def pe2vec():
     # dataset is a python dictionary which store the key value mapping
     dataset = {}
-
     # Recursively search for files within a specified directory and its subdir
-    directory = "/home/x/ta/dataset/"
-    for subdir, dirs, files in os.walk(directory):
-        for f in files:
-            file_path = os.path.join(subdir, f)
-            try:
-                # read PE file using PEFILE module
-                pe = PEFile(file_path)
-                # pe.construct returns a dictionary with features as key and feature value as value
-                dataset[str(f)] = pe.Construct()
-            except Exception as e:
-                print(e)
+    # directory = "/home/x/ta/dataset/"
+    goodware = "/home/x/ta/dataset/good"
+    malware = "/home/x/ta/dataset/malware"
+    for f in os.listdir(malware):
+        print(f)
+        file_path = os.path.join('/home/x/ta/dataset/malware', f)
+        current_label = f
+        try:
+            # read PE file using PEFILE module
+            pe = PEFile(file_path)
+            label = pe.get_label()
+            label.append(1)
+            # pe.construct returns a dictionary with features as key and feature value as value
+            dataset[str(f)] = pe.Construct()
+        except Exception as e:
+            print(e)
+
+    # for f in os.listdir(goodware):
+    #     print(f)
+    #     file_path = os.path.join('/home/x/ta/dataset/good', f)
+    #     try:
+    #         label = get_label(file_path)
+    #         label.append(0)
+    #         # read PE file using PEFILE module
+    #         pe = PEFile(file_path)
+    #         # pe.construct returns a dictionary with features as key and feature value as value
+    #         dataset[str(f)] = pe.Construct()
+    #     except Exception as e:
+    #         print(e)
+
+
+
+    # for subdir, dirs, files in os.walk(directory):
+    #     for f in files:
+    #         file_path = os.path.join(subdir, f)
+    #         try:
+    #             # read PE file using PEFILE module
+    #             pe = PEFile(file_path)
+    #             # pe.construct returns a dictionary with features as key and feature value as value
+    #             dataset[str(f)] = pe.Construct()
+    #         except Exception as e:
+    #             print(e)
     return dataset
+
 
 
 def saveToCSV(dataset):
     df = pd.DataFrame(dataset)
     mal = df.transpose()
     print(mal.shape)
+    print(mal)
     mal.to_csv('dataset_m4lw4r3.csv', encoding='utf-8', index=False)
 
 
