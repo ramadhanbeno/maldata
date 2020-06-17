@@ -179,7 +179,7 @@ def extract_infos(fpath):
     return res
 
 if __name__ == '__main__':
-    output = "Output_CSV/dataset--1.csv"
+    output = "Output_CSV/test.csv"
     csv_delimiter = "|"
     columns = [
         "Name",
@@ -272,8 +272,6 @@ if __name__ == '__main__':
         "RVAImageDirectoryEntrySecurity",
         "SumImportFunction",
         "SumImportFunctionMethod",
-        "Label"
-
 
     ]
 
@@ -281,23 +279,13 @@ if __name__ == '__main__':
     ff.write(csv_delimiter.join(columns) + "\n")
 
     # Launch legitimate
-    for ffile in os.listdir('/home/x/ta/dataset/winpewin7'):
+    for ffile in os.listdir('/home/x/ta/dataset/test'):
         print(ffile)
         try:
-            res = extract_infos(os.path.join('/home/x/ta/dataset/winpewin7', ffile))
-            res.append(1)
+            res = extract_infos(os.path.join('/home/x/ta/dataset/test', ffile))
             ff.write(csv_delimiter.join(map(lambda x: str(x), res)) + "\n")
         except pefile.PEFormatError:
             print('\t -> Bad PE format')
 
-    for ffile in os.listdir('/home/x/ta/dataset/malware'):
-        print(ffile)
-        try:
-            res = extract_infos(os.path.join('/home/x/ta/dataset/malware', ffile))
-            res.append(0)
-            ff.write(csv_delimiter.join(map(lambda x: str(x), res)) + "\n")
-        except pefile.PEFormatError:
-            print('\t -> Bad PE format')
-        # except:
-        #     print('\t -> Weird error')
     ff.close()
+# testdata
