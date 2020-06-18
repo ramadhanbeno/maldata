@@ -16,36 +16,36 @@ def get_api(fname):
     dataset = pd.DataFrame({'Api': data[:,0], 'Return': data[:,1]})
     pd.set_option("display.max_rows", None)
     df = dataset.drop_duplicates(subset='Api', keep='first')
-    df
-    return df
-
-def select_api(data):
+    arr = df.values
+    arr
+    return arr
 
 def extract_info(fpath):
     api = []
-    api.append(get_api(fpath))
+    features = get_api(fpath)
+    select_api = pd.DataFrame({'Api': features[:,0], 'Return': features[:,1]})
+    print(len(select_api))
+    if (len(select_api)>101):
+        api_h = select_api[:100]
+        # api.append(api_h)
+        for row in api_h.itertuples():
+            api.append(row.Return)
+    else:
+        for row in select_api.itertuples():
+            api.append(row.Return)
+        xx = 100 - len(select_api)
+        for i in range(xx):
+            api.append("0")
+
     return api
-# a = np.array(list_api)
-# data = a
-# dataset = pd.DataFrame({'Api': data[:,0], 'Return': data[:,1]})
-# # pd.set_option("display.max_rows", None)
-# df = dataset.drop_duplicates(subset='Api', keep='first')
-# print(df)
-#
-# # LIST 100 API
-# print(df[df.Api == "RegCloseKey"].Return.item())
-# print(df[df.Api == "LdrUnloadDll"].Return.item())
 
-#
-
-# read
 if __name__ == '__main__':
     output = "Output_CSV/json.csv"
     csv_delimiter = ","
-    columns = [
-        "Name",
-        "Md5",
-    ]
+    columns = []
+    for i in range(100):
+        aaa = ("T%d"%(i+1))
+        columns.append(aaa)
 
     ff = open(output, "a")
     ff.write(csv_delimiter.join(columns) + "\n")
