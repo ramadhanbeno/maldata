@@ -22,10 +22,11 @@ def get_api(fname):
 
 def extract_info(fpath):
     api = []
+    api.append(os.path.basename(fpath))
     features = get_api(fpath)
     select_api = pd.DataFrame({'Api': features[:,0], 'Return': features[:,1]})
-    print(len(select_api))
-    if (len(select_api)>101):
+    # print(len(select_api))
+    if (len(select_api)>100):
         api_h = select_api[:100]
         # api.append(api_h)
         for row in api_h.itertuples():
@@ -43,17 +44,28 @@ if __name__ == '__main__':
     output = "Output_CSV/json.csv"
     csv_delimiter = ","
     columns = []
+    columns.append("Name")
     for i in range(100):
         aaa = ("T%d"%(i+1))
         columns.append(aaa)
+    columns.append("Label")
 
     ff = open(output, "a")
     ff.write(csv_delimiter.join(columns) + "\n")
-    for ffile in os.listdir('/home/x/ta/dataset/report json'):
+    for ffile in os.listdir('/home/x/ta/dataset/report_json/goodware'):
         print(ffile)
         try:
-            api = extract_info(os.path.join('/home/x/ta/dataset/report json', ffile))
-        #     api.append(1)
+            api = extract_info(os.path.join('/home/x/ta/dataset/report_json/goodware', ffile))
+            api.append(1)
+            ff.write(csv_delimiter.join(map(lambda x: str(x), api)) + "\n")
+        except:
+            print('\t -> Bad json format')
+
+    for ffile in os.listdir('/home/x/ta/dataset/report_json/malware'):
+        print(ffile)
+        try:
+            api = extract_info(os.path.join('/home/x/ta/dataset/report_json/malware', ffile))
+            api.append(0)
             ff.write(csv_delimiter.join(map(lambda x: str(x), api)) + "\n")
         except:
             print('\t -> Bad json format')
