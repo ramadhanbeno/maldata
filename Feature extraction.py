@@ -3,6 +3,8 @@ import os
 import hashlib
 import array as arr
 import math
+import time
+
 
 def get_md5(fname):
     hash_md5 = hashlib.md5()
@@ -179,8 +181,8 @@ def extract_infos(fpath):
     return res
 
 if __name__ == '__main__':
-    output = "Output_CSV/dataset--1.csv"
-    csv_delimiter = "|"
+    output = "Output_CSV/rawPE.csv"
+    csv_delimiter = ","
     columns = [
         "Name",
         "Md5",
@@ -281,21 +283,25 @@ if __name__ == '__main__':
     ff.write(csv_delimiter.join(columns) + "\n")
 
     # Launch legitimate
-    for ffile in os.listdir('/home/x/ta/dataset/winpewin7'):
+    for ffile in os.listdir('/home/x/ta/pengujian/newgood'):
         print(ffile)
         try:
-            res = extract_infos(os.path.join('/home/x/ta/dataset/winpewin7', ffile))
+            start_time1 = time.time()
+            res = extract_infos(os.path.join('/home/x/ta/pengujian/newgood', ffile))
             res.append(1)
             ff.write(csv_delimiter.join(map(lambda x: str(x), res)) + "\n")
+            print("--- %s seconds ---" % (time.time() - start_time1))
         except pefile.PEFormatError:
             print('\t -> Bad PE format')
 
-    for ffile in os.listdir('/home/x/ta/dataset/malware'):
+    for ffile in os.listdir('/home/x/ta/pengujian/malware+'):
         print(ffile)
         try:
-            res = extract_infos(os.path.join('/home/x/ta/dataset/malware', ffile))
+            start_time2 = time.time()
+            res = extract_infos(os.path.join('/home/x/ta/pengujian/malware+', ffile))
             res.append(0)
             ff.write(csv_delimiter.join(map(lambda x: str(x), res)) + "\n")
+            print("--- %s seconds ---" % (time.time() - start_time2))
         except pefile.PEFormatError:
             print('\t -> Bad PE format')
         # except:
